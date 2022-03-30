@@ -132,10 +132,10 @@ class HImageInfo(__Info):
     COLORMODE_BAYER_RGGB  = 'rggb'
     COLORMODE_BAYER_GBRG  = 'gbrg'
     COLORMODE_BAYER_BGGR  = 'bggr'
-    COLORMODE_BAYER_GBRG  = 'gbrg'
+    COLORMODE_BAYER_GRBG  = 'grbg'
 
     COLORMODES_MONO = [COLORMODE_MONO]
-    COLORMODES_BAYER = [COLORMODE_BAYER_RGGB, COLORMODE_BAYER_GBRG, COLORMODE_BAYER_BGGR, COLORMODE_BAYER_GBRG]
+    COLORMODES_BAYER = [COLORMODE_BAYER_RGGB, COLORMODE_BAYER_GBRG, COLORMODE_BAYER_BGGR, COLORMODE_BAYER_GRBG]
     COLORMODES_RGB = [COLORMODE_RGB]
     COLORMODES_YUV = [COLORMODE_YUV444, COLORMODE_YUV422, COLORMODE_YUV420]
     COLORMODES = COLORMODES_MONO + COLORMODES_RGB + COLORMODES_YUV
@@ -579,9 +579,41 @@ class HImage():
                 image_mode_pil = 'L'
                 image_array_pil = imagedata[0]
             elif self.image_info.get_colormode() in HImageInfo.COLORMODES_BAYER:
-                # implement a simple debayering here .... 
-                image_mode_pil = 'L'
-                image_array_pil = imagedata[0]
+                # very implement a simple 'debayering' 
+                pixel_array = imagedata[0]
+                if self.image_info.get_colormode() in HImageInfo.COLORMODE_BAYER_RGGB:
+                    pixel_array_r  = pixel_array[0::2, 0::2]
+                    pixel_array_gr = pixel_array[0::2, 1::2]
+                    pixel_array_gb = pixel_array[1::2, 0::2]
+                    pixel_array_b  = pixel_array[1::2, 1::2]
+                    pixel_array_g  = np.hstack((pixel_array_gr,pixel_array_gb))
+                if self.image_info.get_colormode() in HImageInfo.COLORMODE_BAYER_BGGR:
+                    pixel_array_b  = pixel_array[0::2, 0::2]
+                    pixel_array_gb = pixel_array[0::2, 1::2]
+                    pixel_array_gr = pixel_array[1::2, 0::2]
+                    pixel_array_r  = pixel_array[1::2, 1::2]
+                    pixel_array_g  = np.hstack((pixel_array_gb,pixel_array_gr))
+                if self.image_info.get_colormode() in HImageInfo.COLORMODE_BAYER_GBRG:
+                    pixel_array_gb = pixel_array[0::2, 0::2]
+                    pixel_array_b  = pixel_array[0::2, 1::2]
+                    pixel_array_r  = pixel_array[1::2, 0::2]
+                    pixel_array_gr = pixel_array[1::2, 1::2]
+                    pixel_array_g  = np.hstack((pixel_array_gb,pixel_array_gr))
+                if self.image_info.get_colormode() in HImageInfo.COLORMODE_BAYER_GRBG:
+                    pixel_array_gr = pixel_array[0::2, 0::2]
+                    pixel_array_r  = pixel_array[0::2, 1::2]
+                    pixel_array_b  = pixel_array[1::2, 0::2]
+                    pixel_array_gb = pixel_array[1::2, 1::2]
+                    pixel_array_g  = np.hstack((pixel_array_gr,pixel_array_gb))
+
+                pixel_array_g = pixel_array_g.reshape(self.image_info.get_height(), self.image_info.get_width() // 2).repeat(2, axis=1)
+                pixel_array_r = pixel_array_r.repeat(2, axis=0).repeat(2, axis=1)
+                pixel_array_b = pixel_array_b.repeat(2, axis=0).repeat(2, axis=1)
+
+                image_mode_pil = 'RGB'
+                image_array_pil = np.array([pixel_array_r, pixel_array_g, pixel_array_b])
+                image_array_pil = image_array_pil.transpose(1,2,0)
+
             else:
                 if self.image_info.get_colormode() == HImageInfo.COLORMODE_RGB:
                     image_mode_pil = 'RGB'
