@@ -44,17 +44,24 @@ class __Info():
     def valid(self):
         return self.ok
 
-    def validate_params(self):
-        self.ok = True
-        for p in self.PARAM_TYPES:
-            if isinstance(self.params[p]['values'], list):
-                if self.params[p]['value'] not in self.params[p]['values']:
-                    logging.error(f"{self.__class__.__name__} with invalid parmeter {p}: {self.params[p]['value']} is not in {self.params[p]['values']}")
-                    self.ok = False
+    def _validate_params(self, params):
+        ok = True
+        for param_name in self.PARAM_TYPES:
+            if param_name not in params:
+                logging.error(f"{self.__class__.__name__} parmeter {param_name} is not present")
+                ok = False
+            elif isinstance(params[param_name]['values'], list):
+                if params[param_name]['value'] not in params[param_name]['values']:
+                    logging.error(f"{self.__class__.__name__} with invalid parmeter {param_name}: {params[param_name]['value']} is not in {params[param_name]['values']}")
+                    ok = False
             else:
-                if (self.params[p]['value'] < 0) or (self.params[p]['value'] > self.params[p]['values']):
-                    logging.error(f"{self.__class__.__name__} with invalid parmeter {p}: {self.params[p]['value']} is not in range 0..{self.params[p]['values']}")
-                    self.ok = False
+                if (params[param_name]['value'] < 0) or (params[param_name]['value'] > params[param_name]['values']):
+                    logging.error(f"{self.__class__.__name__} with invalid parmeter {param_name}: {params[param_name]['value']} is not in range 0..{params[param_name]['values']}")
+                    ok = False
+        return ok
+
+    def validate_params(self):
+        self.ok = self._validate_params(self.params)
 
     def freeze_params(self):
         if self.ok:
@@ -64,14 +71,36 @@ class __Info():
     def dump_params(self):
         logging.error(f"{self.__class__.__name__}")
         logging.error(f"  valid:     {self.ok}")
-        for p in self.PARAM_TYPES:
-            logging.error(f"Parameter: {p}")
-            logging.error(f"  editable:  {self.params[p]['editable']}")
-            logging.error(f"  value:     {self.params[p]['value']}")
-            logging.error(f"  values:    {self.params[p]['values']}")
+        for param_name in self.PARAM_TYPES:
+            logging.error(f"Parameter: {param_name}")
+            logging.error(f"  editable:  {self.params[param_name]['editable']}")
+            logging.error(f"  value:     {self.params[param_name]['value']}")
+            logging.error(f"  values:    {self.params[param_name]['values']}")
 
     def get_params(self):
         return self.ok, self.params
+
+    def apply_params(self, params):
+        if not self._validate_params(params):
+            logging.error(f"{self.__class__.__name__} external parmeter set is not valid")
+        else:
+            for param_name in self.PARAM_TYPES:
+                apply = True
+                if not self.params[param_name]['editable']:
+                    logging.info(f"{self.__class__.__name__} parmeter {param_name} set is ediable - value not applied")
+                    apply = False
+                else:
+                    if isinstance(self.params[param_name]['values'], list):
+                        if params[param_name]['value'] not in self.params[param_name]['values']:
+                            # external value is not in valid member value list 
+                            logging.info(f"{self.__class__.__name__} parmeter {param_name}: {params[param_name]['value']} is not in {self.params[param_name]['values']} - value not applied")
+                            apply = False
+                    else:
+                        if (params[param_name]['value'] < 0) or (params[param_name]['value'] > self.params[param_name]['values']):
+                            logging.info(f"{self.__class__.__name__} parmeter {param_name}: {params[param_name]['value']} is not in range 0..{self.params[param_name]['values']} - value not applied")
+                            apply = False
+                if apply:
+                    self.params[param_name]['value'] = params[param_name]['value']
 
     def set_value(self, param, value):
         if param not in self.PARAM_TYPES:
@@ -119,6 +148,7 @@ class __Info():
             return None
         else:
             return self.params[param]["editable"]
+
 
 
 class HImageInfo(__Info):
@@ -671,15 +701,19 @@ class HImageReader():
             # there is NO internal storage info available - take the external
             self.storage_info = ext_storage_info
         elif ext_storage_info is not None:
-            # there is an internal AND an external storage info available - merge them
-            pass 
+            # there is an internal AND an external storage info available
+            ext_storage_info_ok, ext_storage_info_params = ext_storage_info.get_params()
+            if ext_storage_info_ok:
+                self.storage_info.apply_params(ext_storage_info_params)
 
         if self.image_info is None:
             # there is NO internal iamge info available - take the external
             self.image_info = ext_image_info
         elif ext_image_info is not None:
-            # there is an internal AND an external image info available - merge them
-            pass
+            # there is an internal AND an external image info available
+            ext_image_info_ok, ext_image_info_params = ext_storage_info.get_params()
+            if ext_image_info_ok:
+                self.image_info.apply_params(ext_image_info_params)
 
         return self.storage_info, self.image_info
 
