@@ -1,0 +1,16 @@
+ Presets
+=========
+
+This folder is used to store preset files. The bare filename without
+extension determines the preset name avaiable in the Image Configuration
+Dialog. The values within the preset file are stored in a simple json
+format.
+
+Preset files are holding image and storage information that can be 
+loaded from within the Image Configuration Dialog. The stored preset
+values are overriding all editable values in the current Image
+Configuration Dialog.
+
+The content of the current Image Configuration Dialog can be stored
+as preset file in this location as well.
+

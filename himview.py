@@ -24,6 +24,8 @@ import logging
 import copy
 import re
 import time
+import json
+import glob
 
 from himage import HImage, HImageInfo, HImageStorageInfo
 
@@ -457,6 +459,7 @@ class HIMView(tk.Tk):
         name_title_lable.pack(side=tk.LEFT, padx=5, pady=5)
 
 
+
         fr_im = ttk.Frame(fr, relief=tk.RAISED, borderwidth=1)
         fr_im.pack(fill=tk.BOTH, expand=True)
 
@@ -467,7 +470,6 @@ class HIMView(tk.Tk):
 
         param = HImageInfo.PARAM_WIDTH
         image_xsize_var = tk.IntVar()
-        image_xsize_var.set( imageinfo.get_value(param) )
         image_xsize_frame = ttk.Frame(fr_im)
         image_xsize_frame.pack(fill=tk.X, anchor=tk.N)
         image_xsize_label = ttk.Label(image_xsize_frame, text=param, width=15)
@@ -482,7 +484,6 @@ class HIMView(tk.Tk):
 
         param = HImageInfo.PARAM_HEIGHT
         image_ysize_var = tk.IntVar()
-        image_ysize_var.set( imageinfo.get_value(param) )
         image_ysize_frame = ttk.Frame(fr_im)
         image_ysize_frame.pack(fill=tk.X, anchor=tk.N)
         image_ysize_label = ttk.Label(image_ysize_frame, text=param, width=15)
@@ -497,15 +498,12 @@ class HIMView(tk.Tk):
 
         param = HImageInfo.PARAM_BITDEPTH
         image_bitdepth_var = tk.IntVar()
-        image_bitdepth_var.set( imageinfo.get_value(param) )
         image_bitdepth_frame = ttk.Frame(fr_im)
         image_bitdepth_frame.pack(fill=tk.X, anchor=tk.N)
         image_bitdepth_label = ttk.Label(image_bitdepth_frame, text=param, width=15)
         image_bitdepth_label.pack(side=tk.LEFT, padx=5, pady=5)
         if imageinfo.get_editable(param) :
             image_bitdepth_entry = ttk.Combobox(image_bitdepth_frame, values = imageinfo.get_values(param), state = 'readonly' )
-            if not imageinfo.get_value(param)  in imageinfo.get_values(param) :
-                image_bitdepth_var.set( -1 )
         else:
             image_bitdepth_entry = ttk.Label(image_bitdepth_frame)
         image_bitdepth_entry.config(textvariable=image_bitdepth_var)
@@ -513,43 +511,45 @@ class HIMView(tk.Tk):
 
         param = HImageInfo.PARAM_COLORMODE
         image_colormode_var = tk.StringVar()
-        image_colormode_var.set( imageinfo.get_value(param) )
         image_colormode_frame = ttk.Frame(fr_im)
         image_colormode_frame.pack(fill=tk.X, anchor=tk.N)
         image_colormode_label = ttk.Label(image_colormode_frame, text=param, width=15)
         image_colormode_label.pack(side=tk.LEFT, padx=5, pady=5)
         if imageinfo.get_editable(param) :
             image_colormode_entry = ttk.Combobox(image_colormode_frame, values = imageinfo.get_values(param), state = 'readonly' )
-            if not imageinfo.get_value(param)  in imageinfo.get_values(param) :
-                image_colormode_var.set( -1 )
         else:
             image_colormode_entry = ttk.Label(image_colormode_frame)
         image_colormode_entry.config(textvariable=image_colormode_var)
         image_colormode_entry.pack(fill=tk.X, padx=5, expand=True)
 
+        def image_value_set():
+            param = HImageInfo.PARAM_WIDTH
+            image_xsize_var.set( imageinfo.get_value(param) )
+            param = HImageInfo.PARAM_HEIGHT
+            image_ysize_var.set( imageinfo.get_value(param) )
+            param = HImageInfo.PARAM_BITDEPTH
+            image_bitdepth_var.set( imageinfo.get_value(param) )
+            param = HImageInfo.PARAM_COLORMODE
+            image_colormode_var.set( imageinfo.get_value(param) )
+
+
 
         fr_st = ttk.Frame(fr, relief=tk.RAISED, borderwidth=1)
         fr_st.pack(fill=tk.BOTH, expand=True)
-
-        fr_st_bg_color = fr_st._root().cget('bg')
 
         storage_title_frame = ttk.Frame(fr_st)
         storage_title_frame.pack(fill=tk.X, anchor=tk.N)
         storage_title_label = ttk.Label(storage_title_frame, text="Storage Configuration")
         storage_title_label.pack(side=tk.LEFT, padx=5, pady=5)
-
         
         param = HImageStorageInfo.PARAM_STORAGEMODE
         storage_mode_var = tk.StringVar('')
-        storage_mode_var.set( storageinfo.get_value(param) )
         storage_mode_frame = ttk.Frame(fr_st)
         storage_mode_frame.pack(fill=tk.X, anchor=tk.N)
         storage_mode_label = ttk.Label(storage_mode_frame, text=param, width=15)
         storage_mode_label.pack(side=tk.LEFT, padx=5, pady=5)
         if storageinfo.get_editable(param) :
             storage_mode_entry = ttk.Combobox(storage_mode_frame, values = storageinfo.get_values(param), state = 'readonly' )
-            if not storageinfo.get_value(param) in storageinfo.get_values(param) :
-                storage_mode_var.set( '' )
         else:
             storage_mode_entry = ttk.Label(storage_mode_frame)
         storage_mode_entry.config(textvariable=storage_mode_var)
@@ -557,15 +557,12 @@ class HIMView(tk.Tk):
 
         param = HImageStorageInfo.PARAM_STORAGEFORMAT
         storage_format_var = tk.StringVar()
-        storage_format_var.set( storageinfo.get_value(param) )
         storage_format_frame = ttk.Frame(fr_st)
         storage_format_frame.pack(fill=tk.X, anchor=tk.N)
         storage_format_label = ttk.Label(storage_format_frame, text=param, width=15)
         storage_format_label.pack(side=tk.LEFT, padx=5, pady=5)
         if storageinfo.get_editable(param) :
             storage_format_entry = ttk.Combobox(storage_format_frame, values = storageinfo.get_values(param), state = 'readonly' )
-            if not storageinfo.get_value(param) in storageinfo.get_values(param) :
-                storage_format_var.set( -1 )
         else:
             storage_format_entry = ttk.Label(storage_format_frame)
         storage_format_entry.config(textvariable=storage_format_var)
@@ -573,15 +570,12 @@ class HIMView(tk.Tk):
 
         param = HImageStorageInfo.PARAM_ALIGNMENT
         storage_alignment_var = tk.StringVar('')
-        storage_alignment_var.set( storageinfo.get_value(param) )
         storage_alignment_frame = ttk.Frame(fr_st)
         storage_alignment_frame.pack(fill=tk.X, anchor=tk.N)
         storage_alignment_label = ttk.Label(storage_alignment_frame, text=param, width=15)
         storage_alignment_label.pack(side=tk.LEFT, padx=5, pady=5)
         if storageinfo.get_editable(param) :
             storage_alignment_entry = ttk.Combobox(storage_alignment_frame,  text = storageinfo.get_value(param), values = storageinfo.get_values(param), state = 'readonly' )
-            if not storageinfo.get_value(param)  in storageinfo.get_values(param) :
-                storage_alignment_var.set( '' )
         else:
             storage_alignment_entry = ttk.Label(storage_alignment_frame)
         storage_alignment_entry.config(textvariable=storage_alignment_var)
@@ -589,19 +583,95 @@ class HIMView(tk.Tk):
 
         param = HImageStorageInfo.PARAM_ENDIANESS
         storage_endianess_var = tk.StringVar('')
-        storage_endianess_var.set( storageinfo.get_value(param) )
         storage_endianess_frame = ttk.Frame(fr_st)
         storage_endianess_frame.pack(fill=tk.X, anchor=tk.N)
         storage_endianess_label = ttk.Label(storage_endianess_frame, text=param, width=15)
         storage_endianess_label.pack(side=tk.LEFT, padx=5, pady=5)
         if storageinfo.get_editable(param) :
             storage_endianess_entry = ttk.Combobox(storage_endianess_frame,  text = storageinfo.get_value(param), values = storageinfo.get_values(param), state = 'readonly' )
-            if not storageinfo.get_value(param)  in storageinfo.get_values(param) :
-                storage_endianess_var.set( '' )
         else:
             storage_endianess_entry = ttk.Label(storage_endianess_frame)
         storage_endianess_entry.config(textvariable=storage_endianess_var)
         storage_endianess_entry.pack(fill=tk.X, padx=5, expand=True)
+
+        def storage_value_set():
+            param = HImageStorageInfo.PARAM_STORAGEMODE
+            storage_mode_var.set( storageinfo.get_value(param) )
+            param = HImageStorageInfo.PARAM_STORAGEFORMAT
+            storage_format_var.set( storageinfo.get_value(param) )
+            param = HImageStorageInfo.PARAM_ALIGNMENT
+            storage_alignment_var.set( storageinfo.get_value(param) )
+            param = HImageStorageInfo.PARAM_ENDIANESS
+            storage_endianess_var.set( storageinfo.get_value(param) )
+
+
+
+        fr_pre = ttk.Frame(fr, relief=tk.RAISED, borderwidth=1)
+        fr_pre.pack(fill=tk.BOTH, expand=True)
+
+        preset_title_frame = ttk.Frame(fr_pre)
+        preset_title_frame.pack(fill=tk.X, anchor=tk.N)
+        preset_title_label = ttk.Label(preset_title_frame, text="Preset")
+        preset_title_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+        def fetch_preset():
+            presets = []
+            preset_files = glob.glob(f"{os.path.dirname(os.path.abspath(__file__))}/preset/*.json")
+            for p in preset_files:
+                p = re.sub(r"/.*/", "", p)
+                p = re.sub(r"\.json", "", p)
+                presets.append(p)
+            pre_load_cmb.config(values=presets)
+
+        def button_save_preset():
+            preset_name = pre_save_var.get()
+            if preset_name and not preset_name.isspace():
+                preset_filename = f"{os.path.dirname(os.path.abspath(__file__))}/preset/{preset_name}.json"
+                if not os.path.isfile(preset_filename) or messagebox.askokcancel(title="Save Preset", message=f"Overwrite existing preset '{preset_name}'?"):
+                    with open(preset_filename, 'w') as preset_file:
+                        preset_imageinfo = copy.deepcopy(imageinfo)
+                        preset_storageinfo = copy.deepcopy(storageinfo)
+                        preset_imageinfo.freeze_params()
+                        preset_storageinfo.freeze_params()
+                        _, preset_imageinfo_params = preset_imageinfo.get_params()
+                        _, preset_storageinfo_params = preset_storageinfo.get_params()
+                        preset_content = {}
+                        preset_content["imageinfo"] = preset_imageinfo_params
+                        preset_content["storageinfo"] = preset_storageinfo_params
+                        preset_json_string = json.dumps(preset_content, indent=4)
+                        preset_file.write(preset_json_string)
+                        fetch_preset()
+
+        def button_load_preset():
+            preset_name = pre_load_var.get()
+            preset_filename = f"{os.path.dirname(os.path.abspath(__file__))}/preset/{preset_name}.json"
+            if os.path.isfile(preset_filename):
+                with open(preset_filename) as preset_file:
+                    params = json.load(preset_file)
+                    imageinfo.apply_params(params["imageinfo"])
+                    storageinfo.apply_params(params["storageinfo"])
+                    image_value_set()
+                    storage_value_set()
+                    #self.apply_params(self, params)
+
+        pre_load_frame = ttk.Frame(fr_pre)
+        pre_load_frame.pack(fill=tk.X, anchor=tk.N)
+        pre_load_bt = ttk.Button(pre_load_frame, text="Load", command=button_load_preset)
+        pre_load_bt.pack(side=tk.LEFT, padx=5, pady=5)
+        pre_load_var = tk.StringVar()
+        pre_load_cmb = ttk.Combobox(pre_load_frame,  text = 'null', values = ['eins', 'zwei', 'drei'], state = 'readonly' )
+        pre_load_cmb.config(textvariable=pre_load_var)
+        pre_load_cmb.pack(fill=tk.X, padx=5, expand=True)
+
+        pre_save_frame = ttk.Frame(fr_pre)
+        pre_save_frame.pack(fill=tk.X, anchor=tk.N)
+        pre_save_bt = ttk.Button(pre_save_frame, text="Save", command=button_save_preset)
+        pre_save_bt.pack(side=tk.LEFT, padx=5, pady=5)
+        pre_save_var = tk.StringVar()
+        pre_save_entry = ttk.Entry(pre_save_frame)
+        pre_save_entry.config(textvariable=pre_save_var)
+        pre_save_entry.pack(fill=tk.X, padx=5, expand=True)
+
 
 
         def button_ok():
@@ -613,7 +683,6 @@ class HIMView(tk.Tk):
             storageinfo.set_storageformat(storage_format_var.get())
             storageinfo.set_alignment(storage_alignment_var.get())
             storageinfo.set_endianess(storage_endianess_var.get())
-
 
             imageinfo.set_bitdepth(image_bitdepth_var.get())
             imageinfo.set_size(image_xsize_var.get(), image_ysize_var.get())
@@ -636,6 +705,12 @@ class HIMView(tk.Tk):
         bt_ok.pack(side=tk.RIGHT)
 
         d.protocol("WM_DELETE_WINDOW", button_cancel)
+
+
+
+        image_value_set()
+        storage_value_set()
+        fetch_preset()
 
         self.wait_window(d)
 
