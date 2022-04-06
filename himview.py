@@ -642,13 +642,15 @@ class HIMView(tk.Tk):
 
                         imageinfo_update()
                         preset_imageinfo = copy.deepcopy(imageinfo)
-                        preset_imageinfo.freeze_params()
                         _, preset_imageinfo_params = preset_imageinfo.get_params()
+                        for p in preset_imageinfo_params.values():
+                            del p["editable"]
 
                         storageinfo_update()
                         preset_storageinfo = copy.deepcopy(storageinfo)
-                        preset_storageinfo.freeze_params()
                         _, preset_storageinfo_params = preset_storageinfo.get_params()
+                        for p in preset_storageinfo_params.values():
+                            del p["editable"]
 
                         preset_content = {}
                         preset_content["imageinfo"] = preset_imageinfo_params
