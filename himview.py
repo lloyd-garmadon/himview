@@ -532,6 +532,10 @@ class HIMView(tk.Tk):
             param = HImageInfo.PARAM_COLORMODE
             image_colormode_var.set( imageinfo.get_value(param) )
 
+        def imageinfo_update():
+            imageinfo.set_bitdepth(image_bitdepth_var.get())
+            imageinfo.set_size(image_xsize_var.get(), image_ysize_var.get())
+            imageinfo.set_colormode(image_colormode_var.get())
 
 
         fr_st = ttk.Frame(fr, relief=tk.RAISED, borderwidth=1)
@@ -604,6 +608,12 @@ class HIMView(tk.Tk):
             param = HImageStorageInfo.PARAM_ENDIANESS
             storage_endianess_var.set( storageinfo.get_value(param) )
 
+        def storageinfo_update():
+            # update the imageinfo and storage info references
+            storageinfo.set_storagemode(storage_mode_var.get())
+            storageinfo.set_storageformat(storage_format_var.get())
+            storageinfo.set_alignment(storage_alignment_var.get())
+            storageinfo.set_endianess(storage_endianess_var.get())
 
 
         fr_pre = ttk.Frame(fr, relief=tk.RAISED, borderwidth=1)
@@ -629,12 +639,17 @@ class HIMView(tk.Tk):
                 preset_filename = f"{os.path.dirname(os.path.abspath(__file__))}/preset/{preset_name}.json"
                 if not os.path.isfile(preset_filename) or messagebox.askokcancel(title="Save Preset", message=f"Overwrite existing preset '{preset_name}'?"):
                     with open(preset_filename, 'w') as preset_file:
+
+                        imageinfo_update()
                         preset_imageinfo = copy.deepcopy(imageinfo)
-                        preset_storageinfo = copy.deepcopy(storageinfo)
                         preset_imageinfo.freeze_params()
-                        preset_storageinfo.freeze_params()
                         _, preset_imageinfo_params = preset_imageinfo.get_params()
+
+                        storageinfo_update()
+                        preset_storageinfo = copy.deepcopy(storageinfo)
+                        preset_storageinfo.freeze_params()
                         _, preset_storageinfo_params = preset_storageinfo.get_params()
+
                         preset_content = {}
                         preset_content["imageinfo"] = preset_imageinfo_params
                         preset_content["storageinfo"] = preset_storageinfo_params
@@ -678,15 +693,8 @@ class HIMView(tk.Tk):
             nonlocal ok 
             ok = True
 
-            # update the imageinfo and storage info references
-            storageinfo.set_storagemode(storage_mode_var.get())
-            storageinfo.set_storageformat(storage_format_var.get())
-            storageinfo.set_alignment(storage_alignment_var.get())
-            storageinfo.set_endianess(storage_endianess_var.get())
-
-            imageinfo.set_bitdepth(image_bitdepth_var.get())
-            imageinfo.set_size(image_xsize_var.get(), image_ysize_var.get())
-            imageinfo.set_colormode(image_colormode_var.get())
+            storageinfo_update()
+            imageinfo_update()
 
             d.destroy()
             d.update()
