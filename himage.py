@@ -28,7 +28,14 @@ import numpy as np
 from PIL import Image
 
 
-class __Info():
+
+##########################################################################################
+#
+# Base class for HImageInfo and HImageStorageInfo
+#
+##########################################################################################
+
+class _Info():
     PARAM_TYPES = []
 
     def __init__(self):
@@ -62,6 +69,7 @@ class __Info():
 
     def validate_params(self):
         self.ok = self._validate_params(self.params)
+        return self.ok
 
     def freeze_params(self):
         if self.ok:
@@ -151,7 +159,15 @@ class __Info():
 
 
 
-class HImageInfo(__Info):
+##########################################################################################
+#
+# HImageInfo class
+#
+# Basic class to hold image dimension and color information 
+#
+##########################################################################################
+
+class HImageInfo(_Info):
 
     COLORMODE_NONE    = 'None'
     COLORMODE_MONO    = 'Y'
@@ -206,8 +222,7 @@ class HImageInfo(__Info):
         if self.params[self.PARAM_COLORMODE]["editable"]:
             if colormode in self.params[self.PARAM_COLORMODE]["values"]:
                 self.params[self.PARAM_COLORMODE]["value"] = colormode
-                self.validate_params()
-                return self.ok
+                return self.validate_params()
         return False
 
     def get_colormode(self):
@@ -236,8 +251,7 @@ class HImageInfo(__Info):
         if self.params[self.PARAM_BITDEPTH]["editable"]:
             if bitdepth in self.params[self.PARAM_BITDEPTH]["values"]:
                 self.params[self.PARAM_BITDEPTH]["value"] = bitdepth
-                self.validate_params()
-                return self.ok
+                return self.validate_params()
         return False
 
     def get_bitdepth(self):
@@ -250,8 +264,7 @@ class HImageInfo(__Info):
         if self.params[self.PARAM_WIDTH]["editable"] and self.params[self.PARAM_HEIGHT]["editable"]:
             self.params[self.PARAM_WIDTH]["value"] = width
             self.params[self.PARAM_HEIGHT]["value"] = height
-            self.validate_params()
-            return self.ok
+            return self.validate_params()
         return False
 
     def get_size(self):
@@ -300,8 +313,16 @@ class HImageInfo(__Info):
 
 
 
+##########################################################################################
+#
+# HImageStorageInfo class
+#
+# Basic class to describe detailed storage layout information
+# of an uncompressed image file
+#
+##########################################################################################
 
-class HImageStorageInfo(__Info):
+class HImageStorageInfo(_Info):
 
     STORAGE_MODE_NONE                    = 'None'
     STORAGE_MODE_MONO                    = 'Monochrome'
@@ -384,8 +405,7 @@ class HImageStorageInfo(__Info):
         if self.params[self.PARAM_STORAGEMODE]["editable"]:
             if storagemode in self.params[self.PARAM_STORAGEMODE]["values"]:
                 self.params[self.PARAM_STORAGEMODE]["value"] = storagemode
-                self.validate_params()
-                return self.ok
+                return self.validate_params()
         return False
 
     def get_storagemode(self):
@@ -398,8 +418,7 @@ class HImageStorageInfo(__Info):
         if self.params[self.PARAM_STORAGEFORMAT]["editable"]:
             if storageformat in self.params[self.PARAM_STORAGEFORMAT]["values"]:
                 self.params[self.PARAM_STORAGEFORMAT]["value"] = storageformat
-                self.validate_params()
-                return self.ok
+                return self.validate_params()
         return False
 
     def get_storageformat(self):
@@ -412,8 +431,7 @@ class HImageStorageInfo(__Info):
         if self.params[self.PARAM_ALIGNMENT]["editable"]:
             if alignment in self.params[self.PARAM_ALIGNMENT]["values"]:
                 self.params[self.PARAM_ALIGNMENT]["value"] = alignment
-                self.validate_params()
-                return self.ok
+                return self.validate_params()
         return False
 
     def get_alignment(self):
@@ -426,8 +444,7 @@ class HImageStorageInfo(__Info):
         if self.params[self.PARAM_ENDIANESS]["editable"]:
             if endianess in self.params[self.PARAM_ENDIANESS]["values"]:
                 self.params[self.PARAM_ENDIANESS]["value"] = endianess
-                self.validate_params()
-                return self.ok
+                return self.validate_params()
         return False
 
     def get_endianess(self):
@@ -486,6 +503,19 @@ class HImageStorageInfo(__Info):
                 return bpp
 
         return 0
+
+
+
+
+
+##########################################################################################
+#
+# HImage class
+# 
+# Fundamental class to hold the image information and image data
+#
+##########################################################################################
+
 class HImage():
 
     def __init__(self):
@@ -500,12 +530,56 @@ class HImage():
     def valid(self):
         return self.ok
 
+    @classmethod
+    def _check_consistency(cls, image_info, image_data):
+        if image_info is None:
+            logging.error("No imageinfo was given")
+            return False
+        elif not image_info.validate_params():
+            logging.error("imageinfo is not valid")
+            return False
+        elif image_data is None:
+            logging.error("No imagedata was given")
+            return False
+        elif not isinstance(image_data, list):
+            logging.error("imagedata is not correct")
+            return False
+        elif image_info.get_components() != len(image_data):
+            logging.error("image_info and image_data mismatch - number of components")
+            return False
+        else:
+            ok = True
+            info_width, info_height = image_info.get_size()
+            info_colormode = image_info.get_colormode()
+            for comp_index, comp_data in enumerate(image_data, start=0):
+                if not isinstance(comp_data, np.ndarray):
+                    logging.error("image_data is no valid numpy object")
+                    ok = False
+                else:
+                    data_height, data_width = comp_data.shape
+                    if comp_index != 0:
+                        if info_colormode == HImageInfo.COLORMODE_YUV422:
+                            data_width *= 2
+                        elif info_colormode == HImageInfo.COLORMODE_YUV420:
+                            data_height *= 2
+                            data_width *= 2
+                    if info_width != data_width:
+                        logging.error("image_info and image_data mismatch - width does not match")
+                        ok = False
+                    if info_height != data_height:
+                        logging.error("image_info and image_data mismatch - height does not match")
+                        ok = False
+            if ok:
+                for i in range(len(image_data)):
+                    image_data[i] = image_data[i].astype(np.uint32)
+
+            return ok
+
 
     def open(self, file_name=None, storage_info=None, image_info=None, config_function=None):
-
         if self.ok:
             logging.error("HImage class already initialized")
-            self.ok = False
+            return False
         elif not file_name:
             logging.error("no input file given")
             self.ok = False
@@ -547,11 +621,16 @@ class HImage():
     def create(self, image_info=None, image_data=None):
         if self.ok:
             logging.error("HImage class already initialized")
-            self.ok = False
+            return False
+        elif not self._check_consistency(image_info, image_data):
+            logging.error("HImage class already initialized")
+            return False
         else:
-            self.ok = False
+            self.image_data = copy.deepcopy(image_data)
+            self.image_info = copy.deepcopy(image_info)
+            self.ok = self.image_info.validate_params()
 
-        return self.ok
+            return self.ok
 
 
     def get_imageinfo(self):
@@ -674,6 +753,13 @@ class HImage():
 
 
 
+##########################################################################################
+#
+# HImageReader class
+# 
+# Basic class to call specific HImageReader classes
+#
+##########################################################################################
 
 class HImageReader():
 
@@ -721,14 +807,14 @@ class HImageReader():
     def update_storageinfo(self, storage_info):
         if storage_info is not None:
             self.storage_info = storage_info
-            self.storage_info.validate_params()
-
+            return self.storage_info.validate_params()
+        return False 
 
     def update_imageinfo(self, image_info):
         if image_info is not None:
             self.image_info = image_info
-            self.image_info.validate_params()
-
+            return self.image_info.validate_params()
+        return False
 
     '''
         Fundametal checks done by the base class
@@ -766,6 +852,15 @@ class HImageReader():
         else:
             return False, None, None
 
+
+
+##########################################################################################
+#
+# HImageReaderRaw class
+# 
+# Specific class to read uncompressed raw files
+#
+##########################################################################################
 
 class HImageReaderRaw(HImageReader):
 
@@ -856,6 +951,7 @@ class HImageReaderRaw(HImageReader):
 
             return HImageReader.open(self, ext_storage_info, ext_image_info)
 
+        return False
 
     def read(self):
         HImageReader.read(self)
@@ -1029,6 +1125,14 @@ class HImageReaderRaw(HImageReader):
 
 
 
+##########################################################################################
+#
+# HImageReaderPgmPpm class
+# 
+# Specific class to read uncompressed pgm and ppm files
+#
+##########################################################################################
+
 class HImageReaderPgmPpm(HImageReaderRaw):
 
     def __init__(self, file_name):
@@ -1091,7 +1195,7 @@ class HImageReaderPgmPpm(HImageReaderRaw):
                 self.storage_info.set_value(HImageStorageInfo.PARAM_ENDIANESS, HImageStorageInfo.STORAGE_ENDIANESS_BIG)
                 self.storage_info.set_editable(HImageStorageInfo.PARAM_ENDIANESS, True)
 
-                self.storage_info.validate_params()
+                ok = self.storage_info.validate_params()
 
             # determine the imageinfo
             self.image_info = HImageInfo()
@@ -1124,11 +1228,23 @@ class HImageReaderPgmPpm(HImageReaderRaw):
                 self.image_info.set_values(HImageInfo.PARAM_BITDEPTH, [i for i in range (1,self.storage_info.get_bitdepth()+1)])
                 self.image_info.set_editable(HImageInfo.PARAM_BITDEPTH, True)
 
-                self.image_info.validate_params()
+                ok = self.image_info.validate_params()
 
-            return HImageReader.open(self, ext_storage_info, ext_image_info)
+            if ok:
+                return HImageReader.open(self, ext_storage_info, ext_image_info)
+
+        return False
 
 
+
+##########################################################################################
+#
+# HImageReaderPIL class
+# 
+# Specific class to open non raw file formats via PIL library
+# This reader is used as fallback
+#
+##########################################################################################
 
 class HImageReaderPIL(HImageReader):
     def __init__(self, file_name):
@@ -1148,6 +1264,7 @@ class HImageReaderPIL(HImageReader):
                 self.image_info.freeze_params()
             except:
                 logging.error(f"opening file '{self.file_name}' failed")
+                return False
 
             self.storage_info = HImageStorageInfo()
             self.storage_info.set_storagemode(HImageStorageInfo.STORAGE_MODE_RGB_RGB_interleaved)
@@ -1157,6 +1274,8 @@ class HImageReaderPIL(HImageReader):
             self.storage_info.freeze_params()
 
             return HImageReader.open(self, ext_storage_info, ext_image_info)
+
+        return False
 
 
     def read(self):
