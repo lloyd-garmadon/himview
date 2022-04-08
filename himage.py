@@ -1304,3 +1304,252 @@ class HImageReaderPIL(HImageReader):
         return self.ok
 
 
+
+
+
+##########################################################################################
+#
+# _HImageOperator class
+# 
+# Base class for image operations
+#
+##########################################################################################
+
+class _HImageOperator:
+    NAME =          "Dummy Operation"
+    DESCRIPTION =   [ 
+                        "Performs no operation on the input image\n"
+                        "Just returns the given keyword arguments\n" 
+                    ]
+
+    INPUT_IMG_COUNT =  1
+
+    ARGUMENTS =     [
+                        ["dummy_a", ["a", "b"], "Just a dummy argument is accepted" ],
+                        ["dummy_B", ["A", "B"], "Just a dummy argument is accepted"]
+                    ]
+
+    _ARG_NAME = 0
+    _ARG_VALS = 1
+    _ARG_DESCR = 2
+
+    @classmethod
+    def get_name(cls):
+        return cls.NAME
+
+    @classmethod
+    def get_description(cls):
+        return cls.DESCRIPTION
+
+    @classmethod
+    def get_input_count(cls):
+        return cls.INPUT_IMG_COUNT
+
+    @classmethod
+    def _init_execute(cls, input_images):
+        ok = True
+        output_image = None
+        output_text = f"Operation {cls.NAME}\n\n"
+
+        if not input_images:
+            output_text += "No input images given\n"
+            ok = False
+        elif len(input_images) != cls.INPUT_IMG_COUNT:
+            output_text += "Invalid number of input images\n"
+            ok = False
+
+        return ok, output_image, output_text
+
+    @classmethod
+    def execute(cls, input_images, **kwargs):
+        ok, output_image, output_text = cls._init_execute(input_images)
+
+        if ok:
+            output_text += "Keyword arguments allowed:\n"
+            for args in cls.DESCRIPTION:
+                output_text += f"{args[cls._ARG_NAME]}: {args[cls._ARG_DESCR]} \n"
+                for val in args[cls._ARG_VALS]:
+                    output_text += f"  {val}\n"
+
+            output_text += "Keyword arguments given:\n"
+            for key, value in kwargs.items():
+                output_text += f"{key}: {value}\n"
+
+        return ok, output_image, output_text
+
+
+
+##########################################################################################
+#
+# _HImageOperatorDiff class
+# 
+# Base class for image diff operations
+#
+##########################################################################################
+
+class _HImageOperatorDiff(_HImageOperator):
+    INPUT_IMG_COUNT = 2
+
+    _DIFFMODE_ABS_COLOR = 1
+    _DIFFMODE_ABS_ALL   = 2
+    _DIFFMODE_REL_COLOR = 3
+    _DIFFMODE_REL_ALL   = 4
+
+    _DIFFMODES = [_DIFFMODE_ABS_COLOR, _DIFFMODE_ABS_ALL, _DIFFMODE_REL_COLOR, _DIFFMODE_REL_ALL]
+
+    @classmethod
+    def _init_execute(cls, input_images):
+        ok, output_image, output_text = super()._init_execute(input_images)
+
+        if ok:
+            if not input_images[0].valid():
+                output_text += "input Image 0 not valid\n"
+                ok = False
+            elif not input_images[1].valid():
+                output_text += "input Image 1 not valid\n"
+                ok = False
+            elif input_images[0].image_info.get_width() != input_images[1].image_info.get_width():
+                output_text += "Image width does not match\n"
+                ok = False
+            elif input_images[0].image_info.get_height() != input_images[1].image_info.get_height():
+                output_text += "Image height does not match\n"
+                ok = False
+            elif input_images[0].image_info.get_components() != input_images[1].image_info.get_components():
+                output_text += "Color components does not match\n"
+                ok = False
+            elif input_images[0].image_info.get_components() != 1 and input_images[0].image_info.get_colormode() != input_images[1].image_info.get_colormode():
+                output_text += "Colormode does not match\n"
+                ok = False
+            elif input_images[0].image_info.get_components() <= 1 or input_images[0].image_info.get_components() > 3:
+                output_text += "Wrong number of color components\n"
+                ok = False
+
+        return ok, output_image, output_text
+
+    @classmethod
+    def execute(cls, input_images, **kwargs):
+        ok, output_image, output_text = cls._init_execute(input_images)
+
+        if ok:
+            if "diffmode" not in kwargs:
+                output_text += "No diffmode given\n"
+                ok = False
+            elif kwargs["diffmode"] not in cls._DIFFMODES:
+                output_text += "Unknown diffmode\n"
+                ok = False
+
+        if ok:
+            diff_mode = kwargs["diffmode"]
+            diff_comp = input_images[0].image_info.get_components()
+
+            image_data_A = input_images[0].get_imagedata()
+            image_data_B = input_images[1].get_imagedata()
+            res_image_data = []
+
+            res_image_bitdepth = max( input_images[0].image_info.get_bitdepth(), input_images[0].image_info.get_bitdepth() )
+            res_image_width = input_images[0].image_info.get_width()
+            res_image_height = input_images[0].image_info.get_height()
+            res_image_colormode = input_images[0].image_info.get_colormode()
+            if diff_mode == _HImageOperatorDiff._DIFFMODE_ABS_ALL or diff_mode == _HImageOperatorDiff._DIFFMODE_REL_ALL:
+                res_image_colormode = HImageInfo.COLORMODE_MONO
+            res_image_info = HImageInfo(colormode=res_image_colormode, width=res_image_width, height=res_image_height, bitdepth=res_image_bitdepth)
+
+
+            if (diff_mode == _HImageOperatorDiff._DIFFMODE_ABS_COLOR) or (diff_mode == _HImageOperatorDiff._DIFFMODE_ABS_ALL):
+                for i in range(diff_comp):
+                    image_diff = np.subtract(image_data_A[i], image_data_B[i])
+                    np.absolute(image_diff, out=image_diff)
+                    res_image_data.append( image_diff )
+                if diff_mode == _HImageOperatorDiff._DIFFMODE_ABS_ALL:
+                    for i in range(1, diff_comp):
+                        res_image_data[0] = np.maximum(res_image_data[0], res_image_data[i])
+                    for i in range(1, diff_comp):
+                        res_image_data.pop(-1)
+
+            if (diff_mode == _HImageOperatorDiff._DIFFMODE_REL_COLOR) or (diff_mode == _HImageOperatorDiff._DIFFMODE_REL_ALL):
+                image_max = 0
+                for i in range(diff_comp):
+                    image_diff = np.subtract(image_data_A[i], image_data_B[i], dtype=np.double)
+                    np.true_divide(image_diff, 2**(32 - res_image_bitdepth),  out=image_diff)
+                    image_max = max(image_max,  np.amax(image_diff))
+                    image_max = max(image_max, -np.amin(image_diff))
+                    res_image_data.append( image_diff )
+                image_factor = 1
+                if image_max != 0:
+                    image_factor = 2**7 / image_max
+
+                for i in range(0, diff_comp):
+                    np.multiply(res_image_data[i], image_factor, out=res_image_data[i])
+                    np.add(res_image_data[i], 2**7, out=res_image_data[i])
+                    np.multiply(res_image_data[i], 2**24, out=res_image_data[i])
+                    res_image_data[i] = res_image_data[i].astype(np.uint32)
+
+                if diff_mode == _HImageOperatorDiff._DIFFMODE_REL_ALL:
+                    for i in range(1, diff_comp):
+                        res_image_data.pop(-1)
+
+        if ok:
+            output_image = HImage()
+            output_image.create(image_info=res_image_info, image_data=res_image_data)
+
+        return ok, output_image, output_text
+
+
+
+##########################################################################################
+#
+# HImageOperatorDiffXXX classes
+# 
+# Specific classes for image diff operations
+#
+##########################################################################################
+
+class HImageOperatorDiffAbsCol(_HImageOperatorDiff):
+    NAME = "Absolute Image Difference on each Color Component"
+    DESCRIPTION = ( "The absolute difference for each color component between\n"
+                    "two images is calculated and a result image is generated\n"
+                    "Smaller differences resulting in small color values\n"
+                    "Attention:\n"
+                    "For images with more than 8 bit accuracty further LSBs\n"
+                    "ignored for the result image\n" )
+    @classmethod
+    def execute(cls, images, **kwargs):
+        return super().execute(images, diffmode=cls._DIFFMODE_ABS_COLOR, **kwargs)
+class HImageOperatorDiffAbsAll(_HImageOperatorDiff):
+    NAME = "Absolute Image Difference over all Color Components"
+    DESCRIPTION = ( "The absolute difference for each color component between\n"
+                    "two images is calculated. The maximal difference values over\n"
+                    "all color components generates a gray result image\n"
+                    "Smaller differences resulting in small gray values\n"
+                    "Attention:\n"
+                    "For images with more than 8 bit accuracty further LSBs\n"
+                    "ignored for the result image\n" )
+    @classmethod
+    def execute(cls, images, **kwargs):
+        return super().execute(images, diffmode=cls._DIFFMODE_ABS_ALL, **kwargs)
+class HImageOperatorDiffRelCol(_HImageOperatorDiff):
+    NAME = "Relative Image Difference on each Color Component"
+    DESCRIPTION = ( "The difference for each color component between two images\n"
+                    "is calculated. The reslulting values are scaled according\n"
+                    "to the maximal aberration and a 8bit colored result image\n"
+                    "is generated. Positive differences are resulting\n"
+                    "in brighter color values, negative image values in darker\n"
+                    "values. Identical values are scalted to the value 128.\n" )
+    @classmethod
+    def execute(cls, images, **kwargs):
+        return super().execute(images, diffmode=cls._DIFFMODE_REL_COLOR, **kwargs)
+class HImageOperatorDiffRelAll(_HImageOperatorDiff):
+    NAME = "Relative Image Difference over all Color Components"
+    DESCRIPTION = ( "The difference for each color component between two\n"
+                    "images is calculated. The maximal difference values\n"
+                    "over all color components generates 8bit gray result image\n"
+                    "The reslulting values are scaled according to the maximal\n"
+                    "aberration. Positive differences are resulting\n"
+                    "in brighter color values, negative image values in darker\n"
+                    "values. Identical values are scalted to the gray value 128.\n" )
+    @classmethod
+    def execute(cls, images, **kwargs):
+        return super().execute(images, diffmode=cls._DIFFMODE_REL_ALL, **kwargs)
+
+
+

@@ -28,6 +28,10 @@ import json
 import glob
 
 from himage import HImage, HImageInfo, HImageStorageInfo
+from himage import HImageOperatorDiffAbsCol
+from himage import HImageOperatorDiffAbsAll
+from himage import HImageOperatorDiffRelCol
+from himage import HImageOperatorDiffRelAll
 
 import numpy as np
 
@@ -390,11 +394,11 @@ class HIMView(tk.Tk):
         self.menu.add_cascade(label='File', menu=self.menu_file)
 
         self.menu_edit = tk.Menu(self.menu, tearoff=0)
-        self.menu_edit.add_command(label='Histogram',                       command=self.dialog_not_implemented)
-        self.menu_edit.add_command(label='Absolute Difference (colored)',   command=self.dialog_abs_diff_col)
-        self.menu_edit.add_command(label='Absolute Difference (grey)',      command=self.dialog_abs_diff_grey)
-        self.menu_edit.add_command(label='Scaled Difference (colored)',     command=self.dialog_rel_diff_col)
-        self.menu_edit.add_command(label='Scaled Difference (grey)',        command=self.dialog_rel_diff_grey)
+        self.menu_edit.add_command(label='Histogram',                     command=self.dialog_not_implemented)
+        self.menu_edit.add_command(label='Absolute Difference (color)',   command=self.dialog_abs_diff_col)
+        self.menu_edit.add_command(label='Absolute Difference (mono)',    command=self.dialog_abs_diff_grey)
+        self.menu_edit.add_command(label='Scaled Difference (color)',     command=self.dialog_rel_diff_col)
+        self.menu_edit.add_command(label='Scaled Difference (mono)',      command=self.dialog_rel_diff_grey)
         self.menu.add_cascade(label='Edit', menu=self.menu_edit)
 
         self.config(menu=self.menu)
@@ -823,65 +827,51 @@ class HIMView(tk.Tk):
 
 
     def dialog_abs_diff_col(self):
-        name="Absolute Image Difference on each Color Component"
-        description = ( "The absolute difference for each color component between\n"
-                        "two images is calculated and a result image is generated\n"
-                        "Smaller differences resulting in small color values\n"
-                        "Attention:\n"
-                        "For images with more than 8 bit accuracty further LSBs\n"
-                        "ignored for the result image\n" )
-        images = self.dialog_tab_select_generic(select_count=2, name=name, description=description)
-        if images and len(images) > 0:
-            tab_image = HImage.OperationDiff(images, HImage.OPERATOR_DIFF_ABS_COLOR)
-            tab_name = "Absolute Image Difference (color)"
-            self.open_image_tab(tab_image, tab_name)
+        name = HImageOperatorDiffAbsCol.get_name()
+        description = HImageOperatorDiffAbsCol.get_description()
+        input_count = HImageOperatorDiffAbsCol.get_input_count()
+        images = self.dialog_tab_select_generic(select_count=input_count, name=name, description=description)
+        if images and len(images) == input_count:
+            ok, tab_image, _ = HImageOperatorDiffAbsCol.execute(images)
+            tab_name = "Absolute Difference (color)"
+            if ok:
+                self.open_image_tab(tab_image, tab_name)
 
 
     def dialog_abs_diff_grey(self):
-        name="Absolute Image Difference over all Color Components"
-        description = ( "The absolute difference for each color component between\n"
-                        "two images is calculated. The maximal difference values over\n"
-                        "all color components generates a gray result image\n"
-                        "Smaller differences resulting in small gray values\n"
-                        "Attention:\n"
-                        "For images with more than 8 bit accuracty further LSBs\n"
-                        "ignored for the result image\n" )
-        images = self.dialog_tab_select_generic(select_count=2, name=name, description=description)
-        if images and len(images) > 0:
-            tab_image = HImage.OperationDiff(images, HImage.OPERATOR_DIFF_ABS_ALL)
-            tab_name = "Absolute Image Difference (grey)"
-            self.open_image_tab(tab_image, tab_name)
+        name = HImageOperatorDiffAbsAll.get_name()
+        description = HImageOperatorDiffAbsAll.get_description()
+        input_count = HImageOperatorDiffAbsAll.get_input_count()
+        images = self.dialog_tab_select_generic(select_count=input_count, name=name, description=description)
+        if images and len(images) == input_count:
+            ok, tab_image, _ = HImageOperatorDiffAbsAll.execute(images)
+            tab_name = "Absolute Difference (mono)"
+            if ok:
+                self.open_image_tab(tab_image, tab_name)
 
 
     def dialog_rel_diff_col(self):
-        name="Relative Image Difference on each Color Component"
-        description = ( "The difference for each color component between two images\n"
-                        "is calculated. The reslulting values are scaled according\n"
-                        "to the maximal aberration and a 8bit colored result image\n"
-                        "is generated. Positive differences are resulting\n"
-                        "in brighter color values, negative image values in darker\n"
-                        "values. Identical values are scalted to the value 128.\n" )
-        images = self.dialog_tab_select_generic(select_count=2, name=name, description=description)
-        if images and len(images) > 0:
-            tab_image = HImage.OperationDiff(images, HImage.OPERATOR_DIFF_REL_COLOR)
-            tab_name = "Relative Image Difference (color)"
-            self.open_image_tab(tab_image, tab_name)
+        name = HImageOperatorDiffRelCol.get_name()
+        description = HImageOperatorDiffRelCol.get_description()
+        input_count = HImageOperatorDiffRelCol.get_input_count()
+        images = self.dialog_tab_select_generic(select_count=input_count, name=name, description=description)
+        if images and len(images) == input_count:
+            ok, tab_image, _ = HImageOperatorDiffRelCol.execute(images)
+            tab_name = "Relative Difference (color)"
+            if ok:
+                self.open_image_tab(tab_image, tab_name)
 
 
     def dialog_rel_diff_grey(self):
-        name="Relative Image Difference over all Color Components"
-        description = ( "The difference for each color component between two\n"
-                        "images is calculated. The maximal difference values\n"
-                        "over all color components generates 8bit gray result image\n"
-                        "The reslulting values are scaled according to the maximal\n"
-                        "aberration. Positive differences are resulting\n"
-                        "in brighter color values, negative image values in darker\n"
-                        "values. Identical values are scalted to the gray value 128.\n" )
-        images = self.dialog_tab_select_generic(select_count=2, name=name, description=description)
-        if images and len(images) > 0:
-            tab_image = HImage.OperationDiff(images, HImage.OPERATOR_DIFF_REL_ALL)
-            tab_name = "Relative Image Difference (grey)"
-            self.open_image_tab(tab_image, tab_name)
+        name = HImageOperatorDiffRelAll.get_name()
+        description = HImageOperatorDiffRelAll.get_description()
+        input_count = HImageOperatorDiffRelAll.get_input_count()
+        images = self.dialog_tab_select_generic(select_count=input_count, name=name, description=description)
+        if images and len(images) == input_count:
+            ok, tab_image, _ = HImageOperatorDiffRelAll.execute(images)
+            tab_name = "Relative Difference (mono)"
+            if ok:
+                self.open_image_tab(tab_image, tab_name)
 
 
     def dialog_file_open(self):
