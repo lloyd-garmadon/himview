@@ -40,6 +40,8 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 
+import tkinterdnd2 as tkdnd
+
 from PIL import Image, ImageTk
 
 g_status = None
@@ -362,14 +364,14 @@ class Splash(tk.Toplevel):
             self.parent.deiconify()            
 
 
-class HIMView(tk.Tk):
+class HIMView(tkdnd.Tk):
 
     '''
     ' constructor
     '''
 
     def __init__(self, nosplash=False):
-        tk.Tk.__init__(self)
+        tkdnd.Tk.__init__(self)
 
         global g_status
         g_status = tk.StringVar('')
@@ -389,7 +391,7 @@ class HIMView(tk.Tk):
         self.menu = tk.Menu(self)
 
         self.menu_file = tk.Menu(self.menu, tearoff=0)
-        self.menu_file.add_command(label='Open',        command=self.dialog_file_open )
+        self.menu_file.add_command(label='Open',        command=self.dialog_file_open_ask )
         self.menu_file.add_command(label="Exit",        command=self.quit )
         self.menu.add_cascade(label='File', menu=self.menu_file)
 
@@ -405,6 +407,8 @@ class HIMView(tk.Tk):
 
         self.frame_image_tab = ttk.Frame(self, relief=tk.RAISED, borderwidth=1)
         self.frame_image_tab.pack(fill=tk.BOTH, side=tk.TOP, expand=True, )
+        self.frame_image_tab.drop_target_register(tkdnd.DND_FILES)
+        self.frame_image_tab.dnd_bind('<<Drop>>', self.dialog_file_open_dnd)
 
         self.tab_control = ImageNotebook(self.frame_image_tab)
         self.tab_control.enable_traversal()
@@ -874,17 +878,24 @@ class HIMView(tk.Tk):
                 self.open_image_tab(tab_image, tab_name)
 
 
-    def dialog_file_open(self):
-        filename = filedialog.askopenfilename()
+    def dialog_not_implemented(self):
+        messagebox.showinfo('Message','Not implemanted yet')
+
+
+    def dialog_file_open(self, filename):
         tab_image = HImage()
         ok = tab_image.open(file_name=filename, config_function=self.dialog_configure_image)
         if ok:
             tab_name = re.findall("([/].*[/])(.*)$", f"//{filename}")[0][1]
             self.open_image_tab(tab_image, tab_name)
 
+    def dialog_file_open_ask(self):
+        filename = filedialog.askopenfilename()
+        self.dialog_file_open(filename)
 
-    def dialog_not_implemented(self):
-        messagebox.showinfo('Message','Not implemanted yet')
+    def dialog_file_open_dnd(self, event):
+        filename = event.data
+        self.dialog_file_open(filename)
 
 
 
