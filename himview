@@ -1,5 +1,21 @@
 #!/bin/bash
 
-SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+SCRIPT_DIR=$( dirname "$(readlink -f -- "$0")" )
+VENV_DIR=${SCRIPT_DIR}/venv
 
-$SCRIPT_DIR/himview.py $@
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creating virtual environment"
+    python3 -m venv $VENV_DIR
+
+    echo "Activating virtual environemnt"
+    source $VENV_DIR/bin/activate
+
+    echo "Installing required dependencies"
+    python3 -m pip install -r $SCRIPT_DIR/requirements.txt
+else 
+    echo "Activating virtual environemnt"
+    source $VENV_DIR/bin/activate
+fi
+
+echo "Starting himview"
+python3 $SCRIPT_DIR/himview.py $@ &
