@@ -369,7 +369,6 @@ class HIMView(tkdnd.Tk):
     '''
     ' constructor
     '''
-
     def __init__(self, nosplash=False):
         tkdnd.Tk.__init__(self)
 
@@ -382,6 +381,8 @@ class HIMView(tkdnd.Tk):
         window_height = 600
         window_offset_x = (screen_width - window_width) // 2
         window_offset_y = (screen_height - window_height) // 2
+        icon_img = tk.PhotoImage(file=f"{os.path.dirname(os.path.realpath(__file__))}/himview_icon.ppm")
+        self.tk.call('wm', 'iconphoto', self._w, icon_img)
         self.geometry(f"{window_width}x{window_height}+{window_offset_x}+{window_offset_y}")
         self.title("HIM View")
 
